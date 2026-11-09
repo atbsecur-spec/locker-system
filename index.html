@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบบริหารจัดการกุญแจล็อกเกอร์</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SheetJS สำหรับ Export Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Sarabun', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-indigo-700 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-white/10 p-2.5 rounded-xl">
+                    <i class="fa-solid fa-key text-2xl text-amber-300"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold">ระบบบริหารจัดการกุญแจล็อกเกอร์</h1>
+                    <p class="text-xs text-indigo-200">ล็อกเกอร์ชาย (M01-M95) และหญิง (F01-F95) | เชื่อมต่อ Google Sheets</p>
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 shadow-sm">
+                    <i class="fa-solid fa-file-excel"></i> ส่งออก Excel
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 py-6 flex-grow w-full">
+        
+        <!-- Dashboard Stats -->
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center gap-3">
+                <div class="bg-emerald-100 text-emerald-600 p-3 rounded-lg"><i class="fa-solid fa-lock-open text-lg"></i></div>
+                <div>
+                    <p class="text-xs text-slate-500 font-medium">ว่างทั้งหมด</p>
+                    <h3 id="stat-available" class="text-xl font-bold text-slate-800">0</h3>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center gap-3">
+                <div class="bg-blue-100 text-blue-600 p-3 rounded-lg"><i class="fa-solid fa-key text-lg"></i></div>
+                <div>
+                    <p class="text-xs text-slate-500 font-medium">เบิกดอกหลัก</p>
+                    <h3 id="stat-main" class="text-xl font-bold text-slate-800">0</h3>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center gap-3">
+                <div class="bg-amber-100 text-amber-600 p-3 rounded-lg"><i class="fa-solid fa-shield-halved text-lg"></i></div>
+                <div>
+                    <p class="text-xs text-slate-500 font-medium">เบิกดอกสำรอง</p>
+                    <h3 id="stat-backup" class="text-xl font-bold text-slate-800">0</h3>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center gap-3">
+                <div class="bg-rose-100 text-rose-600 p-3 rounded-lg"><i class="fa-solid fa-triangle-exclamation text-lg"></i></div>
+                <div>
+                    <p class="text-xs text-slate-500 font-medium">เบิกหมดคู่</p>
+                    <h3 id="stat-both" class="text-xl font-bold text-slate-800">0</h3>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center gap-3 col-span-2 md:col-span-1">
+                <div class="bg-purple-100 text-purple-600 p-3 rounded-lg"><i class="fa-solid fa-screwdriver-wrench text-lg"></i></div>
+                <div>
+                    <p class="text-xs text-slate-500 font-medium">แจ้งชำรุด</p>
+                    <h3 id="stat-broken" class="text-xl font-bold text-slate-800">0</h3>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter & Search Toolbar -->
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-2 w-full md:w-auto">
+                <button onclick="switchGender('M')" id="btn-gender-m" class="px-5 py-2 rounded-lg font-medium text-sm transition bg-indigo-600 text-white shadow-sm flex-1 md:flex-none">
+                    <i class="fa-solid fa-mars mr-1"></i> ล็อกเกอร์ชาย (M01-M95)
+                </button>
+                <button onclick="switchGender('F')" id="btn-gender-f" class="px-5 py-2 rounded-lg font-medium text-sm transition bg-slate-100 text-slate-600 hover:bg-slate-200 flex-1 md:flex-none">
+                    <i class="fa-solid fa-venus mr-1"></i> ล็อกเกอร์หญิง (F01-F95)
+                </button>
+            </div>
+            <div class="flex items-center gap-3 w-full md:w-auto">
+                <div class="relative flex-1 md:w-64">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400"><i class="fa-solid fa-search"></i></span>
+                    <input type="text" id="search-input" oninput="renderLockers()" placeholder="ค้นหาเบอร์, ชื่อพนักงาน..." class="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500">
+                </div>
+                <select id="filter-status" onchange="renderLockers()" class="py-2 px-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-white">
+                    <option value="ALL">สถานะทั้งหมด</option>
+                    <option value="AVAILABLE">ว่าง</option>
+                    <option value="MAIN">เบิกดอกหลัก</option>
+                    <option value="BACKUP">เบิกดอกสำรอง</option>
+                    <option value="BOTH">เบิกหมดทั้งคู่</option>
+                    <option value="BROKEN">ชำรุด</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Locker Grid Container -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 mb-6">
+            <div class="flex justify-between items-center mb-4 pb-3 border-b border-slate-100">
+                <h2 id="grid-title" class="font-bold text-lg text-slate-800">ผังล็อกเกอร์ชาย (M01 - M95)</h2>
+                <div class="flex items-center gap-3 text-xs text-slate-500">
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span> ว่าง</span>
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-blue-500 inline-block"></span> ดอกหลัก</span>
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-amber-500 inline-block"></span> ดอกสำรอง</span>
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-rose-500 inline-block"></span> เบิกหมด</span>
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-purple-500 inline-block"></span> ชำรุด</span>
+                </div>
+            </div>
+            <div id="locker-grid" class="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10 gap-3">
+                <!-- Javascript will render lockers here -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Locker Action -->
+    <div id="locker-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div class="bg-indigo-700 text-white px-6 py-4 flex justify-between items-center">
+                <h3 id="modal-title" class="font-bold text-lg">จัดการล็อกเกอร์</h3>
+                <button onclick="closeModal()" class="text-white/80 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <input type="hidden" id="modal-locker-id">
+                
+                <!-- Info Status ปัจจุบัน -->
+                <div id="modal-current-status" class="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs text-slate-600">
+                    <!-- แสดงผู้ถือครองปัจจุบัน -->
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">ชื่อ-นามสกุล พนักงาน *</label>
+                    <input type="text" id="emp-name" placeholder="ระบุชื่อและนามสกุล" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">แผนก *</label>
+                    <input type="text" id="emp-dept" placeholder="ระบุแผนก" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">ประเภทรายการ</label>
+                        <select id="action-type" onchange="handleActionChange()" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-white">
+                            <option value="BORROW">เบิกกุญแจ</option>
+                            <option value="RETURN">คืนกุญแจ</option>
+                            <option value="BROKEN">แจ้งตู้ชำรุด</option>
+                        </select>
+                    </div>
+                    <div id="key-type-wrapper">
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">เลือกดอกกุญแจ</label>
+                        <select id="key-type" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-white">
+                            <option value="MAIN">ดอกหลัก (ใช้งาน)</option>
+                            <option value="BACKUP">ดอกสำรอง</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="note-wrapper">
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">หมายเหตุ / อาการชำรุด</label>
+                    <textarea id="modal-note" rows="2" placeholder="ระบุรายละเอียดเพิ่มเติม (ถ้ามี)" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500"></textarea>
+                </div>
+
+                <div id="sync-loading" class="hidden text-center text-xs text-indigo-600 font-medium py-1">
+                    <i class="fa-solid fa-spinner fa-spin mr-1"></i> กำลังบันทึกข้อมูลลง Google Sheets...
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                    <button onclick="closeModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-sm font-medium transition">ยกเลิก</button>
+                    <button onclick="saveLockerAction()" id="btn-save" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition shadow-sm">บันทึกรายการ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500 mt-auto">
+        ระบบบริหารจัดการกุญแจล็อกเกอร์ออนไลน์ &copy; 2026 | พัฒนาสำหรับองค์กร
+    </footer>
+
+    <script>
+        // ใส่ URL Google Apps Script ของคุณที่บรรทัดด้านล่างนี้
+        const WEB_APP_URL = "YOUR_GOOGLE_APPS_SCRIPT_URL_HERE";
+
+        let currentGender = 'M';
+        let lockers = {};
+
+        function initLockers() {
+            const saved = localStorage.getItem('locker_data_v2');
+            if (saved) {
+                lockers = JSON.parse(saved);
+            } else {
+                for (let i = 1; i <= 95; i++) {
+                    let num = i < 10 ? '0' + i : i;
+                    lockers['M' + num] = { id: 'M' + num, status: 'AVAILABLE', empName: '', dept: '', mainKey: true, backupKey: true, note: '', history: [] };
+                    lockers['F' + num] = { id: 'F' + num, status: 'AVAILABLE', empName: '', dept: '', mainKey: true, backupKey: true, note: '', history: [] };
+                }
+                saveLocal();
+            }
+            renderLockers();
+        }
+
+        function saveLocal() {
+            localStorage.setItem('locker_data_v2', JSON.stringify(lockers));
+            updateStats();
+        }
+
+        function updateStats() {
+            let available = 0, main = 0, backup = 0, both = 0, broken = 0;
+            Object.values(lockers).forEach(l => {
+                if (l.status === 'AVAILABLE') available++;
+                else if (l.status === 'MAIN') main++;
+                else if (l.status === 'BACKUP') backup++;
+                else if (l.status === 'BOTH') both++;
+                else if (l.status === 'BROKEN') broken++;
+            });
+            document.getElementById('stat-available').innerText = available;
+            document.getElementById('stat-main').innerText = main;
+            document.getElementById('stat-backup').innerText = backup;
+            document.getElementById('stat-both').innerText = both;
+            document.getElementById('stat-broken').innerText = broken;
+        }
+
+        function switchGender(gender) {
+            currentGender = gender;
+            if (gender === 'M') {
+                document.getElementById('btn-gender-m').className = "px-5 py-2 rounded-lg font-medium text-sm transition bg-indigo-600 text-white shadow-sm flex-1 md:flex-none";
+                document.getElementById('btn-gender-f').className = "px-5 py-2 rounded-lg font-medium text-sm transition bg-slate-100 text-slate-600 hover:bg-slate-200 flex-1 md:flex-none";
+                document.getElementById('grid-title').innerText = "ผังล็อกเกอร์ชาย (M01 - M95)";
+            } else {
+                document.getElementById('btn-gender-f').className = "px-5 py-2 rounded-lg font-medium text-sm transition bg-indigo-600 text-white shadow-sm flex-1 md:flex-none";
+                document.getElementById('btn-gender-m').className = "px-5 py-2 rounded-lg font-medium text-sm transition bg-slate-100 text-slate-600 hover:bg-slate-200 flex-1 md:flex-none";
+                document.getElementById('grid-title').innerText = "ผังล็อกเกอร์หญิง (F01 - F95)";
+            }
+            renderLockers();
+        }
+
+        function renderLockers() {
+            const grid = document.getElementById('locker-grid');
+            grid.innerHTML = '';
+            const search = document.getElementById('search-input').value.toLowerCase();
+            const filter = document.getElementById('filter-status').value;
+
+            for (let i = 1; i <= 95; i++) {
+                let num = i < 10 ? '0' + i : i;
+                let id = currentGender + num;
+                let l = lockers[id];
+
+                if (filter !== 'ALL' && l.status !== filter) continue;
+                if (search && !id.toLowerCase().includes(search) && !l.empName.toLowerCase().includes(search)) continue;
+
+                let bgClass = "bg-emerald-500 hover:bg-emerald-600 text-white";
+                let icon = '<i class="fa-solid fa-lock-open text-xs"></i>';
+                if (l.status === 'MAIN') { bgClass = "bg-blue-500 hover:bg-blue-600 text-white"; icon = '<i class="fa-solid fa-key text-xs"></i>'; }
+                else if (l.status === 'BACKUP') { bgClass = "bg-amber-500 hover:bg-amber-600 text-white"; icon = '<i class="fa-solid fa-shield-halved text-xs"></i>'; }
+                else if (l.status === 'BOTH') { bgClass = "bg-rose-500 hover:bg-rose-600 text-white"; icon = '<i class="fa-solid fa-lock text-xs"></i>'; }
+                else if (l.status === 'BROKEN') { bgClass = "bg-purple-500 hover:bg-purple-600 text-white"; icon = '<i class="fa-solid fa-screwdriver-wrench text-xs"></i>'; }
+
+                let div = document.createElement('div');
+                div.className = `${bgClass} p-3 rounded-xl shadow-sm cursor-pointer transition flex flex-col items-center justify-center gap-1 min-h-[75px]`;
+                div.onclick = () => openModal(id);
+                div.innerHTML = `
+                    <div class="flex items-center gap-1 text-xs opacity-90">${icon} <span>${id}</span></div>
+                    <span class="text-xs font-bold truncate max-w-full text-center">${l.empName || (l.status === 'BROKEN' ? 'ชำรุด' : 'ว่าง')}</span>
+                `;
+                grid.appendChild(div);
+            }
+            updateStats();
+        }
+
+        function openModal(id) {
+            document.getElementById('modal-locker-id').value = id;
+            document.getElementById('modal-title').innerText = `จัดการล็อกเกอร์: ${id}`;
+            let l = lockers[id];
+            
+            document.getElementById('emp-name').value = l.empName;
+            document.getElementById('emp-dept').value = l.dept;
+            document.getElementById('modal-note').value = l.note;
+            document.getElementById('action-type').value = l.status === 'BROKEN' ? 'BROKEN' : (l.status === 'AVAILABLE' ? 'BORROW' : 'RETURN');
+            
+            let statusText = `สถานะปัจจุบัน: `;
+            if(l.status === 'AVAILABLE') statusText += `ว่าง (กุญแจครบ 2 ดอก)`;
+            else if(l.status === 'MAIN') statusText += `เบิกดอกหลักโดย ${l.empName} (${l.dept})`;
+            else if(l.status === 'BACKUP') statusText += `เบิกดอกสำรองโดย ${l.empName} (${l.dept})`;
+            else if(l.status === 'BOTH') statusText += `เบิกหมดทั้ง 2 ดอกโดย ${l.empName} (${l.dept})`;
+            else if(l.status === 'BROKEN') statusText += `แจ้งชำรุด (${l.note || 'ไม่มีระบุอาการ'})`;
+            
+            document.getElementById('modal-current-status').innerText = statusText;
+            handleActionChange();
+            document.getElementById('locker-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('locker-modal').classList.add('hidden');
+        }
+
+        function handleActionChange() {
+            let action = document.getElementById('action-type').value;
+            let keyWrapper = document.getElementById('key-type-wrapper');
+            if (action === 'RETURN' || action === 'BROKEN') {
+                keyWrapper.style.display = 'none';
+            } else {
+                keyWrapper.style.display = 'block';
+            }
+        }
+
+        async function saveLockerAction() {
+            let id = document.getElementById('modal-locker-id').value;
+            let name = document.getElementById('emp-name').value.trim();
+            let dept = document.getElementById('emp-dept').value.trim();
+            let action = document.getElementById('action-type').value;
+            let keyType = document.getElementById('key-type').value;
+            let note = document.getElementById('modal-note').value.trim();
+            let l = lockers[id];
+
+            if ((action === 'BORROW' || action === 'BROKEN') && (!name || !dept)) {
+                alert('กรุณากรอกชื่อพนักงานและแผนกให้ครบถ้วน');
+                return;
+            }
+
+            let actionText = '';
+            let timeStr = new Date().toLocaleString('th-TH');
+
+            if (action === 'BORROW') {
+                if (keyType === 'MAIN') l.mainKey = false;
+                if (keyType === 'BACKUP') l.backupKey = false;
+                
+                if (!l.mainKey && !l.backupKey) l.status = 'BOTH';
+                else l.status = keyType;
+
+                l.empName = name;
+                l.dept = dept;
+                l.note = note;
+                actionText = `เบิกดอก${keyType === 'MAIN' ? 'หลัก' : 'สำรอง'}`;
+            } else if (action === 'RETURN') {
+                l.mainKey = true;
+                l.backupKey = true;
+                l.status = 'AVAILABLE';
+                actionText = `คืนกุญแจครบ`;
+                name = l.empName; 
+                dept = l.dept;
+            } else if (action === 'BROKEN') {
+                l.status = 'BROKEN';
+                l.note = note;
+                actionText = `แจ้งชำรุด`;
+            }
+
+            l.history.unshift({ time: timeStr, action: actionText, name: name, dept: dept, note: note });
+            saveLocal();
+            closeModal();
+            renderLockers();
+
+            if(WEB_APP_URL && WEB_APP_URL !== "https://script.google.com/macros/s/AKfycbyP66_5v-mEhHt4HLQNKpcBi_w15EotoQYomnGmjudzBIOLeqncwWM9jVu-0KocJp1SZw/exec") {
+                document.getElementById('sync-loading').classList.remove('hidden');
+                try {
+                    await fetch(WEB_APP_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            lockerId: id,
+                            empName: name || '-',
+                            department: dept || '-',
+                            keyType: keyType || '-',
+                            action: actionText,
+                            note: note
+                        })
+                    });
+                } catch (err) {
+                    console.error("Sync to sheets error:", err);
+                }
+                document.getElementById('sync-loading').classList.add('hidden');
+            }
+        }
+
+        function exportToExcel() {
+            let wb = XLSX.utils.book_new();
+            
+            let currentData = [];
+            Object.values(lockers).forEach(l => {
+                currentData.push({
+                    "หมายเลขล็อกเกอร์": l.id,
+                    "สถานะ": l.status,
+                    "ชื่อพนักงาน": l.empName || '-',
+                    "แผนก": l.dept || '-',
+                    "ดอกหลัก": l.mainKey ? "มี" : "เบิกไป",
+                    "ดอกสำรอง": l.backupKey ? "มี" : "เบิกไป",
+                    "หมายเหตุ": l.note || '-'
+                });
+            });
+            let ws1 = XLSX.utils.json_to_sheet(currentData);
+            XLSX.utils.book_append_sheet(wb, ws1, "สถานะล็อกเกอร์ปัจจุบัน");
+
+            let historyData = [];
+            Object.values(lockers).forEach(l => {
+                l.history.forEach(h => {
+                    historyData.push({
+                        "หมายเลขล็อกเกอร์": l.id,
+                        "วันเวลา": h.time,
+                        "รายการ": h.action,
+                        "ชื่อพนักงาน": h.name,
+                        "แผนก": h.dept,
+                        "หมายเหตุ": h.note
+                    });
+                });
+            });
+            let ws2 = XLSX.utils.json_to_sheet(historyData);
+            XLSX.utils.book_append_sheet(wb, ws2, "ประวัติการเบิกคืน");
+
+            XLSX.writeFile(wb, `Locker_Key_Report_${new Date().toISOString().slice(0,10)}.xlsx`);
+        }
+
+        window.onload = initLockers;
+    </script>
+</body>
+</html>
